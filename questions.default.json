@@ -1,0 +1,22 @@
+{
+  "title": "Christmas Questionnaire {year}",
+  "kicker": "The family’s",
+  "questions": [
+    { "id": "smell", "text": "Something you like to smell", "hint": "Candles, coffee, fresh-cut pine, a certain soap…" },
+    { "id": "feel", "text": "Something you like to feel", "hint": "Flannel, a weighted blanket, warm socks…" },
+    { "id": "listen", "text": "Something you like to listen to", "hint": "An artist, a podcast, rain on the roof…" },
+    { "id": "read", "text": "Something you like to read", "hint": "A genre, an author, a magazine…" },
+    { "id": "savory", "text": "Something savory you like to taste", "hint": "Snacks count. So does Grandma’s stuffing." },
+    { "id": "sweet", "text": "Something sweet you like to taste", "hint": "Be specific. Brands welcome." },
+    { "id": "color", "text": "Your favorite color", "hint": "Forest green? Dusty rose? Be as picky as you like." },
+    { "id": "store", "text": "Your favorite store", "hint": "Where would a gift card make you happy?" },
+    { "id": "shape", "text": "Your favorite shape", "hint": "Yes, this is a real question." },
+    { "id": "pattern", "text": "Your favorite pattern", "hint": "Plaid, stripes, florals, polka dots…" },
+    { "id": "decoration", "text": "Your favorite decoration", "hint": "For your house, your tree, your desk…" },
+    { "id": "material", "text": "Your favorite material", "hint": "Wood, leather, brass, linen, wool…" },
+    { "id": "boardgame", "text": "Your favorite board game", "hint": "Or card game. We won’t tell." },
+    { "id": "memory", "text": "Your favorite memory or place (nostalgic)", "hint": "The place or moment you’d go back to." },
+    { "id": "pause", "text": "Something you want to pause, or a slight change this year", "hint": "Something to stop, slow down, or tweak." },
+    { "id": "gift", "text": "Specific gift request", "hint": "The exact thing, with a link or size if it helps." }
+  ]
+}

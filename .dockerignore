@@ -1,0 +1,9 @@
+.git
+.github
+.private
+data
+.testdata
+screenshots
+docs
+*.md
+compose.yaml

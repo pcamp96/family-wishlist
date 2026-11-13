@@ -1,0 +1,17 @@
+services:
+  wishlist:
+    image: ghcr.io/pcamp96/family-wishlist:latest
+    # Or build it yourself from this folder:
+    # build: .
+    container_name: family-wishlist
+    restart: unless-stopped
+    environment:
+      PIN: "2468"            # The family code. 4 to 8 digits. Change it.
+      # TRUST_PROXY: "true"  # Set when running behind a reverse proxy (Caddy, Nginx, Traefik, Cloudflare Tunnel)
+      # QUESTIONS_FILE: /config/questions.json
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/data
+      # Use your own questions:
+      # - ./questions.json:/config/questions.json:ro
