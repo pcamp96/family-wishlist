@@ -335,7 +335,7 @@ function renderFill(id, startQ) {
       <p class="q-num">${i + 1} <span>of ${QUESTIONS.length}</span></p>
       ${q.stamp ? `<span class="stamp" aria-hidden="true">${esc(q.stamp)}</span>` : ''}
       <label for="answer" class="q-text">${esc(q.text)}</label>
-      <textarea id="answer" rows="3" maxlength="600" placeholder="${esc(q.hint)}">${esc(p.answers[q.id] || '')}</textarea>
+      <textarea id="answer" rows="3"placeholder="${esc(q.hint)}">${esc(p.answers[q.id] || '')}</textarea>
       <p class="q-tip muted">Enter for next · Shift+Enter for a new line</p>`;
     const ta = card.querySelector('textarea');
     ta.addEventListener('input', () => {

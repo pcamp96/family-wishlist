@@ -79,7 +79,7 @@ function save() {
 }
 
 const id = () => crypto.randomBytes(6).toString('base64url');
-const clean = (v, max) => String(v ?? '').replace(/\r\n/g, '\n').trim().slice(0, max);
+const clean = (v, max = Infinity) => String(v ?? '').replace(/\r\n/g, '\n').trim().slice(0, max);
 const now = () => new Date().toISOString();
 
 function publicPerson(p, viewer) {
@@ -233,7 +233,7 @@ async function api(req, res, url) {
     if (body.answers && typeof body.answers === 'object') {
       for (const q of QUESTION_IDS) {
         if (body.answers[q] !== undefined) {
-          const v = clean(body.answers[q], 600);
+          const v = clean(body.answers[q]);
           if (v) person.answers[q] = v; else delete person.answers[q];
         }
       }
