@@ -261,7 +261,7 @@ async function api(req, res, url) {
   if (parts[2] === 'gifts' && parts.length === 3 && m === 'POST') {
     const body = await readBody(req);
     if (viewer === person.id) return send(res, 403, { error: 'No peeking at your own surprises.' });
-    const item = clean(body.item, 500);
+    const item = clean(body.item, 2000);
     const text = item || clean(body.text, 300);
     const by = clean(body.by, 40);
     if (!text) return send(res, 400, { error: 'Write what you got first.' });
@@ -280,7 +280,7 @@ async function api(req, res, url) {
   if (parts[2] === 'ideas' && parts.length === 3 && m === 'POST') {
     const body = await readBody(req);
     if (viewer === person.id) return send(res, 403, { error: 'No peeking at your own surprises.' });
-    const text = clean(body.text, 300);
+    const text = clean(body.text, 2000);
     const by = clean(body.by, 40);
     if (!text) return send(res, 400, { error: 'Write the gift idea first.' });
     if (person.ideas.some(i => i.text.toLowerCase() === text.toLowerCase()))

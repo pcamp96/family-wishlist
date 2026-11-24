@@ -32,7 +32,35 @@ function listLines(text) {
 }
 const listItems = text => listLines(text).filter(s => !NOTE.test(s));
 const listNotes = text => listLines(text).filter(s => NOTE.test(s)).map(s => s.replace(NOTE, '')).filter(Boolean);
-const sameItem = (a, b) => String(a).toLowerCase() === String(b).toLowerCase();
+// Links: any http(s) URL in a request shows as a short clickable link. Purchases match on the text
+// without its links, so adding a link to a request later doesn't lose its checkmark.
+const URL_RE = /\bhttps?:\/\/[^\s<>"']+/gi;
+const HAS_URL = /\bhttps?:\/\//i;
+const itemKey = s => String(s ?? '').replace(URL_RE, ' ').replace(/[\s—–:-]+$/, '').replace(/\s+/g, ' ').trim().toLowerCase();
+const sameItem = (a, b) => itemKey(a) === itemKey(b);
+function linkTag(url) {
+  let host = url;
+  try { host = new URL(url).hostname.replace(/^www\./, ''); } catch {}
+  return `<a class="item-link" href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(host)}</a>`;
+}
+// Escape text and turn its URLs into links.
+function rich(text) {
+  text = String(text ?? '');
+  let out = ''; let last = 0;
+  for (const m of text.matchAll(URL_RE)) {
+    const url = m[0].replace(/[.,;:!?)\]]+$/, '');
+    out += esc(text.slice(last, m.index)) + linkTag(url);
+    last = m.index + url.length;
+  }
+  return out + esc(text.slice(last));
+}
+// Accepts "amazon.com/..." as well as a full URL. Returns '' for blank, null for something that isn't a link.
+function normalizeLink(v) {
+  v = String(v || '').trim();
+  if (!v) return '';
+  if (!/^https?:\/\//i.test(v)) v = 'https://' + v;
+  try { const u = new URL(v); return /\./.test(u.hostname) && !/\s/.test(v) ? u.href : null; } catch { return null; }
+}
 // The purchased section starts closed on every visit so nobody sees it by accident.
 let revealedFor = null;
 const myself = () => findPerson(me);
@@ -241,10 +269,18 @@ function renderPerson(id) {
       <ol class="answers">
         ${QUESTIONS.map(q => `<li class="${q.stamp ? 'confess' : ''}">
           <span class="q">${esc(q.text)}:</span>
-          ${p.answers[q.id] ? (q.list && listLines(p.answers[q.id]).length > 1
-            ? `${listNotes(p.answers[q.id]).map(n => `<p class="a a-note">${esc(n)}</p>`).join('')}
-               <ul class="a a-list">${listItems(p.answers[q.id]).map(it => `<li>${esc(it)}</li>`).join('')}</ul>`
-            : `<span class="a">${esc(p.answers[q.id])}</span>`) : `<span class="a empty">${mine ? `<a href="#/fill/${p.id}?q=${q.id}">Add an answer</a>` : 'Not answered yet'}</span>`}
+          ${p.answers[q.id] ? (q.list
+            ? `${listNotes(p.answers[q.id]).map(n => `<p class="a a-note">${rich(n)}</p>`).join('')}
+               <ul class="a a-list">${listItems(p.answers[q.id]).map(it => `<li>${rich(it)}${mine && !HAS_URL.test(it)
+                 ? ` <button type="button" class="link-btn add-link" data-link-item="${esc(it)}">Add link</button>` : ''}</li>`).join('')}</ul>`
+            : `<span class="a">${rich(p.answers[q.id])}</span>`) : (mine && q.list ? '' : `<span class="a empty">${mine ? `<a href="#/fill/${p.id}?q=${q.id}">Add an answer</a>` : 'Not answered yet'}</span>`)}
+          ${mine && q.list ? `<form class="note-form request-form" data-q="${q.id}">
+            <label class="sr-only" for="req-text">New gift request</label>
+            <input id="req-text" name="text" maxlength="300" placeholder="Something you’d like" required>
+            <label class="sr-only" for="req-link">Link (optional)</label>
+            <input id="req-link" name="link" inputmode="url" autocomplete="off" placeholder="Link (optional)">
+            <button class="btn sm">Add request</button>
+          </form>` : ''}
         </li>`).join('')}
       </ol>
     </article>
@@ -294,8 +330,48 @@ function renderPerson(id) {
   });
   app.querySelector('.idea-form')?.addEventListener('submit', e => {
     e.preventDefault();
-    change('POST', `people/${p.id}/ideas`, { text: e.target.text.value, by: myself()?.name || '' }, `Added. ${p.name} won’t see it.`);
+    const link = normalizeLink(e.target.link.value);
+    if (link === null) return toast('That link doesn’t look right.');
+    change('POST', `people/${p.id}/ideas`, { text: `${e.target.text.value.trim()}${link ? ' ' + link : ''}`, by: myself()?.name || '' }, `Added. ${p.name} won’t see it.`);
   });
+
+  // Your own card: add a request or attach a link without going through the questionnaire.
+  async function saveList(qid, value, msg) {
+    try {
+      const { person } = await api('PUT', `people/${p.id}`, { answers: { [qid]: value } });
+      upsert(person); renderPerson(p.id); toast(msg);
+    } catch (err) { toast(err.message); }
+  }
+  app.querySelector('.request-form')?.addEventListener('submit', e => {
+    e.preventDefault();
+    const qid = e.target.dataset.q;
+    const text = e.target.text.value.trim();
+    const link = normalizeLink(e.target.link.value);
+    if (link === null) return toast('That link doesn’t look right.');
+    if (listItems(p.answers[qid]).some(it => sameItem(it, text))) return toast('That’s already on your list.');
+    const current = String(p.answers[qid] || '').trimEnd();
+    saveList(qid, `${current ? current + '\n' : ''}${text}${link ? ' ' + link : ''}`, 'Added to your list.');
+  });
+  app.querySelectorAll('[data-link-item]').forEach(b => b.addEventListener('click', () => {
+    const qid = QUESTIONS.find(x => x.list).id;
+    const form = document.createElement('form');
+    form.className = 'note-form link-form';
+    form.innerHTML = `<label class="sr-only" for="link-input">Link for ${esc(b.dataset.linkItem)}</label>
+      <input id="link-input" name="link" inputmode="url" autocomplete="off" placeholder="Paste a link" required>
+      <button class="btn sm">Save link</button>`;
+    b.replaceWith(form);
+    form.link.focus();
+    form.addEventListener('submit', e => {
+      e.preventDefault();
+      const link = normalizeLink(form.link.value);
+      if (!link) return toast('That link doesn’t look right.');
+      const lines = String(p.answers[qid] || '').split('\n');
+      const i = lines.findIndex(l => l.replace(/^\s*(?:[-*•·]|\d+[.)])\s+/, '').trim() === b.dataset.linkItem);
+      if (i < 0) return toast('Couldn’t find that request. Try refreshing.');
+      lines[i] = `${lines[i].trimEnd()} ${link}`;
+      saveList(qid, lines.join('\n'), 'Link added.');
+    });
+  }));
   app.querySelectorAll('[data-idea]').forEach(b => b.addEventListener('click', () => change('DELETE', `people/${p.id}/ideas/${b.dataset.idea}`)));
   app.querySelectorAll('[data-gift]').forEach(b => b.addEventListener('click', () => change('DELETE', `people/${p.id}/gifts/${b.dataset.gift}`)));
 }
@@ -326,10 +402,10 @@ function purchasedSection(p) {
         <button class="link-btn" data-act="conceal">Hide</button>
       </div>
       ${q ? `<h4>${esc(p.name)}’s requests</h4>
-      ${listNotes(p.answers[q.id]).map(n => `<p class="muted section-note">${esc(n)}</p>`).join('')}
+      ${listNotes(p.answers[q.id]).map(n => `<p class="muted section-note">${rich(n)}</p>`).join('')}
       ${items.length ? `<ul class="registry">
         ${items.map(it => { const g = forItem(it); return `<li class="${g ? 'got' : ''}">
-          <div class="reg-text"><span class="reg-item">${esc(it)}</span>${g ? `<span class="muted">${who(g)}</span>` : ''}</div>
+          <div class="reg-text"><span class="reg-item">${rich(it)}</span>${g ? `<span class="muted">${who(g)}</span>` : ''}</div>
           <label class="reg-check"><input type="checkbox" data-item="${esc(it)}" ${g ? 'checked' : ''}><span>Purchased</span></label>
         </li>`; }).join('')}
       </ul>` : `<p class="muted empty-line">${esc(p.name)} hasn’t asked for anything specific yet.</p>`}` : ''}
@@ -338,7 +414,7 @@ function purchasedSection(p) {
       ${ideas.length ? `<ul class="registry">
         ${ideas.map(idea => { const g = forItem(idea.text); return `<li class="${g ? 'got' : ''}">
           <div class="reg-text">
-            <span class="reg-item">${esc(idea.text)}</span>
+            <span class="reg-item">${rich(idea.text)}</span>
             <span class="muted">Added by ${esc(idea.by || 'someone')} · ${relTime(idea.at)}${g ? ` · bought by ${esc(g.by || 'someone')}` : ''}</span>
             ${g ? '' : `<button class="link-btn reg-remove" data-idea="${idea.id}" aria-label="Remove idea ${esc(idea.text)}">Remove idea</button>`}
           </div>
@@ -348,11 +424,13 @@ function purchasedSection(p) {
       <form class="note-form idea-form">
         <label for="idea-text" class="sr-only">Gift idea for ${esc(p.name)}</label>
         <input id="idea-text" name="text" maxlength="300" placeholder="Something ${esc(p.name)} mentioned wanting…" required>
+        <label for="idea-link" class="sr-only">Link (optional)</label>
+        <input id="idea-link" name="link" inputmode="url" autocomplete="off" placeholder="Link (optional)">
         <button class="btn sm">Add request</button>
       </form>
       <h4>Other gifts</h4>
       <ul class="note-list">
-        ${extras.map(g => `<li><p>${esc(g.text)}</p><span class="muted">${who(g)}</span><button class="link-btn" data-gift="${g.id}" aria-label="Remove ${esc(g.text)}">Remove</button></li>`).join('') || '<li class="empty">Nothing else yet.</li>'}
+        ${extras.map(g => `<li><p>${rich(g.text)}</p><span class="muted">${who(g)}</span><button class="link-btn" data-gift="${g.id}" aria-label="Remove ${esc(g.text)}">Remove</button></li>`).join('') || '<li class="empty">Nothing else yet.</li>'}
       </ul>
       <form class="note-form gift-form">
         <label for="gift-text" class="sr-only">What did you get?</label>
@@ -425,7 +503,7 @@ function renderFill(id, startQ) {
       ${q.stamp ? `<span class="stamp" aria-hidden="true">${esc(q.stamp)}</span>` : ''}
       <label for="answer" class="q-text">${esc(q.text)}</label>
       <textarea id="answer" rows="${q.list ? 5 : 3}" placeholder="${esc(q.hint)}">${esc(p.answers[q.id] || '')}</textarea>
-      <p class="q-tip muted">${q.list ? 'One gift per line · Enter for a new line' : 'Enter for next · Shift+Enter for a new line'}</p>`;
+      <p class="q-tip muted">${q.list ? 'One gift per line · paste a link after any gift' : 'Enter for next · Shift+Enter for a new line'}</p>`;
     const ta = card.querySelector('textarea');
     ta.addEventListener('input', () => {
       p.answers[q.id] = ta.value.trim();
@@ -492,7 +570,7 @@ function renderQuestion(qid) {
     </div>
     <h2 class="q-heading">${esc(q.text)}</h2>
     ${withAnswer.length ? `<ul class="by-q">
-      ${withAnswer.map(p => `<li class="card"><a href="#/p/${p.id}" class="by-q-who">${ornament(p, 'sm')}<span>${esc(p.name)}</span></a><p class="a">${esc(p.answers[q.id])}</p></li>`).join('')}
+      ${withAnswer.map(p => `<li class="card"><a href="#/p/${p.id}" class="by-q-who">${ornament(p, 'sm')}<span>${esc(p.name)}</span></a><p class="a">${rich(p.answers[q.id])}</p></li>`).join('')}
     </ul>` : '<p class="lede">Nobody has answered this one yet.</p>'}
     ${without.length ? `<p class="muted waiting">Still thinking: ${without.map(p => esc(p.name)).join(', ')}</p>` : ''}
   `, 'q');

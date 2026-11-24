@@ -317,6 +317,19 @@ h3 { font-size: 22px; font-weight: 600; }
 .by-q .a { margin: 10px 0 0; }
 .waiting { margin-top: 20px; }
 
+/* ---------- request links ---------- */
+.item-link {
+  display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 999px;
+  background: rgba(184,49,42,.1); color: var(--cranberry-dark);
+  font: 600 13px/1.6 var(--ui); text-decoration: none; vertical-align: middle; white-space: nowrap;
+  max-width: 100%; overflow: hidden; text-overflow: ellipsis;
+}
+.item-link:hover { background: rgba(184,49,42,.18); text-decoration: underline; }
+.add-link { margin-left: 8px; font: 400 13px var(--ui); vertical-align: middle; }
+.request-form { margin-top: 12px; }
+.note-form input[name="link"] { flex: 0 1 36%; }
+.link-form { margin: 6px 0 4px; font: 400 15px var(--ui); }
+
 /* ---------- toast ---------- */
 .toast {
   position: fixed; left: 50%; bottom: 24px; z-index: 60;
@@ -336,6 +349,7 @@ h3 { font-size: 22px; font-weight: 600; }
   .bulb { width: 16px; }
   .bulb span { width: 11px; height: 16px; }
   .note-form { flex-direction: column; }
+  .note-form input, .note-form input[name="link"] { flex: none; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }

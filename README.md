@@ -107,7 +107,7 @@ Copy [`questions.default.json`](questions.default.json), edit it, and mount it:
 
 - `title` shows at the top of every page and in the browser tab. `{year}` becomes the current year.
 - `kicker` is the small handwritten line above the title. Use `""` to hide it.
-- Each question needs a unique `id` (letters, numbers, `-` or `_`) and its `text`. `hint` is the placeholder in the answer box. `stamp` adds a rubber stamp to that question's card. `"list": true` turns the answer into a registry checklist, one item per line (if no question sets it, the question with id `gift` does). A line starting with `Note:` shows as plain text with no checkbox.
+- Each question needs a unique `id` (letters, numbers, `-` or `_`) and its `text`. `hint` is the placeholder in the answer box. `stamp` adds a rubber stamp to that question's card. `"list": true` turns the answer into a registry checklist, one item per line (if no question sets it, the question with id `gift` does). A line starting with `Note:` shows as plain text with no checkbox. Paste a link after any item and it shows as a short clickable link. On your own card you can add a request (with an optional link) or attach a link to an existing one without reopening the questionnaire.
 - Answers are stored by `id`, so you can reword a question without losing answers. Change the `id` and that question starts fresh.
 
 Restart the container after editing the file: `docker restart family-wishlist`.
