@@ -7,7 +7,7 @@ A small, self-hosted Christmas questionnaire for your family. Everyone fills out
 - **One family code.** A 4 to 8 digit PIN keeps strangers out. No accounts, no emails, no passwords to forget.
 - **One question at a time.** Answers save as you type. A string of Christmas lights fills in as you go.
 - **Browse by person or by question.** See one person's whole card, or everyone's favorite store side by side.
-- **A registry for gift requests.** Each line of someone's gift requests gets its own "Purchased" checkbox, and "Add gift" logs anything else you bought so nobody doubles up. It sits behind a "Show gifts already purchased" button at the bottom of the card, and the person it's for never sees it on their own card.
+- **A registry for gift requests.** Each line of someone's gift requests gets its own "Purchased" checkbox, "Add gift" logs anything else you bought so nobody doubles up, and anyone can add a gift idea on someone's behalf ("Added by Dad") when they've heard them mention something. It sits behind a "Show gifts already purchased" button at the bottom of the card, and the person it's for never sees it on their own card.
 - **Your own questions.** Edit one JSON file to change the questions, hints and title.
 - **Tiny.** One Node.js process, no npm dependencies, no database. Answers live in a single JSON file with daily backups.
 

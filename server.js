@@ -71,6 +71,7 @@ try { db = JSON.parse(fs.readFileSync(DB_FILE, 'utf8')); } catch (e) {
 for (const p of db.people) {
   if (!Array.isArray(p.gifts)) p.gifts = Array.isArray(p.notes) ? p.notes.map(n => ({ id: n.id, text: n.text, by: n.by || '', at: n.at })) : [];
   delete p.notes;
+  if (!Array.isArray(p.ideas)) p.ideas = [];
 }
 let lastBackupDay = '';
 function save() {
@@ -96,6 +97,7 @@ function publicPerson(p, viewer) {
     createdAt: p.createdAt, updatedAt: p.updatedAt,
     // What's been bought is kept from the person it's for (honor system: "viewer" is self-reported).
     gifts: viewer && viewer === p.id ? null : p.gifts,
+    ideas: viewer && viewer === p.id ? null : p.ideas,
   };
 }
 
@@ -218,7 +220,7 @@ async function api(req, res, url) {
     if (db.people.length >= 100) return send(res, 400, { error: 'That’s a big family. Too many people.' });
     if (db.people.some(p => p.name.toLowerCase() === name.toLowerCase()))
       return send(res, 409, { error: `${name} is already on the list. Tap their name instead.` });
-    const p = { id: id(), name, ornament: Number(body.ornament) % 6 || 0, answers: {}, gifts: [], createdAt: now(), updatedAt: now() };
+    const p = { id: id(), name, ornament: Number(body.ornament) % 6 || 0, answers: {}, gifts: [], ideas: [], createdAt: now(), updatedAt: now() };
     db.people.push(p); save();
     return send(res, 201, { person: publicPerson(p, p.id) });
   }
@@ -271,6 +273,25 @@ async function api(req, res, url) {
   if (parts[2] === 'gifts' && parts.length === 4 && m === 'DELETE') {
     if (viewer === person.id) return send(res, 403, { error: 'No peeking at your own surprises.' });
     person.gifts = person.gifts.filter(g => g.id !== parts[3]); save();
+    return send(res, 200, { person: publicPerson(person, viewer) });
+  }
+
+  // Gift ideas: requests other people add on someone's behalf, hidden from that person like the purchased list.
+  if (parts[2] === 'ideas' && parts.length === 3 && m === 'POST') {
+    const body = await readBody(req);
+    if (viewer === person.id) return send(res, 403, { error: 'No peeking at your own surprises.' });
+    const text = clean(body.text, 300);
+    const by = clean(body.by, 40);
+    if (!text) return send(res, 400, { error: 'Write the gift idea first.' });
+    if (person.ideas.some(i => i.text.toLowerCase() === text.toLowerCase()))
+      return send(res, 409, { error: 'That idea is already on the list.', person: publicPerson(person, viewer) });
+    if (person.ideas.length >= 100) return send(res, 400, { error: 'That’s a lot of ideas. Remove a few first.' });
+    person.ideas.push({ id: id(), text, by, at: now() }); save();
+    return send(res, 201, { person: publicPerson(person, viewer) });
+  }
+  if (parts[2] === 'ideas' && parts.length === 4 && m === 'DELETE') {
+    if (viewer === person.id) return send(res, 403, { error: 'No peeking at your own surprises.' });
+    person.ideas = person.ideas.filter(i => i.id !== parts[3]); save();
     return send(res, 200, { person: publicPerson(person, viewer) });
   }
 

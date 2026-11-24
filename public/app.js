@@ -247,7 +247,7 @@ function renderPerson(id) {
     ${mine ? `
       <aside class="card notes-locked">
         <h3>Already purchased</h3>
-        <p>Everyone else can check off what they’ve bought you. You can’t see it. That’s the point.</p>
+        <p>Everyone else can check off what they’ve bought you and add gift ideas for you. You can’t see any of it. That’s the point.</p>
       </aside>
       <p class="danger-zone"><button class="link-btn" data-act="delete">Remove my card</button></p>`
     : purchasedSection(p)}
@@ -287,6 +287,11 @@ function renderPerson(id) {
     e.preventDefault();
     change('POST', `people/${p.id}/gifts`, { text: e.target.text.value, by: myself()?.name || '' }, 'Added. Nobody will double up.');
   });
+  app.querySelector('.idea-form')?.addEventListener('submit', e => {
+    e.preventDefault();
+    change('POST', `people/${p.id}/ideas`, { text: e.target.text.value, by: myself()?.name || '' }, `Added. ${p.name} won’t see it.`);
+  });
+  app.querySelectorAll('[data-idea]').forEach(b => b.addEventListener('click', () => change('DELETE', `people/${p.id}/ideas/${b.dataset.idea}`)));
   app.querySelectorAll('[data-gift]').forEach(b => b.addEventListener('click', () => change('DELETE', `people/${p.id}/gifts/${b.dataset.gift}`)));
 }
 
@@ -294,16 +299,17 @@ function purchasedSection(p) {
   if (revealedFor !== p.id) return `
     <aside class="card bought-gate">
       <h3>Already purchased</h3>
-      <p class="muted">Check off what you’ve bought for ${esc(p.name)}, or add something they didn’t ask for.</p>
+      <p class="muted">Check off what you’ve bought for ${esc(p.name)}, suggest a gift idea, or log something they didn’t ask for.</p>
       <p class="spoiler">Spoilers for ${esc(p.name)}. If this is your card, stop here.</p>
       <button class="btn" data-act="reveal">Show gifts already purchased</button>
     </aside>`;
   const gifts = p.gifts || [];
   const q = QUESTIONS.find(x => x.list);
   const items = q ? listItems(p.answers[q.id]) : [];
+  const ideas = p.ideas || [];
   const forItem = it => gifts.find(g => g.item && sameItem(g.item, it));
-  // Gifts not tied to a current line: extras, plus checks on lines the person has since removed.
-  const extras = gifts.filter(g => !g.item || !items.some(it => sameItem(it, g.item)));
+  // Gifts not tied to a current request or idea: extras, plus checks on lines that have since been removed.
+  const extras = gifts.filter(g => !g.item || ![...items, ...ideas.map(i => i.text)].some(it => sameItem(it, g.item)));
   const who = g => `${g.by ? esc(g.by) + ' · ' : ''}${relTime(g.at)}`;
   return `
     <aside class="card bought" id="bought">
@@ -321,6 +327,23 @@ function purchasedSection(p) {
           <label class="reg-check"><input type="checkbox" data-item="${esc(it)}" ${g ? 'checked' : ''}><span>Purchased</span></label>
         </li>`; }).join('')}
       </ul>` : `<p class="muted empty-line">${esc(p.name)} hasn’t asked for anything specific yet.</p>`}` : ''}
+      <h4>Ideas from the family</h4>
+      <p class="muted section-note">Heard ${esc(p.name)} mention something? Add it here. ${esc(p.name)} won’t see it.</p>
+      ${ideas.length ? `<ul class="registry">
+        ${ideas.map(idea => { const g = forItem(idea.text); return `<li class="${g ? 'got' : ''}">
+          <div class="reg-text">
+            <span class="reg-item">${esc(idea.text)}</span>
+            <span class="muted">Added by ${esc(idea.by || 'someone')} · ${relTime(idea.at)}${g ? ` · bought by ${esc(g.by || 'someone')}` : ''}</span>
+            ${g ? '' : `<button class="link-btn reg-remove" data-idea="${idea.id}" aria-label="Remove idea ${esc(idea.text)}">Remove idea</button>`}
+          </div>
+          <label class="reg-check"><input type="checkbox" data-item="${esc(idea.text)}" ${g ? 'checked' : ''}><span>Purchased</span></label>
+        </li>`; }).join('')}
+      </ul>` : ''}
+      <form class="note-form idea-form">
+        <label for="idea-text" class="sr-only">Gift idea for ${esc(p.name)}</label>
+        <input id="idea-text" name="text" maxlength="300" placeholder="Something ${esc(p.name)} mentioned wanting…" required>
+        <button class="btn sm">Add request</button>
+      </form>
       <h4>Other gifts</h4>
       <ul class="note-list">
         ${extras.map(g => `<li><p>${esc(g.text)}</p><span class="muted">${who(g)}</span><button class="link-btn" data-gift="${g.id}" aria-label="Remove ${esc(g.text)}">Remove</button></li>`).join('') || '<li class="empty">Nothing else yet.</li>'}
