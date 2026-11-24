@@ -7,7 +7,7 @@ A small, self-hosted Christmas questionnaire for your family. Everyone fills out
 - **One family code.** A 4 to 8 digit PIN keeps strangers out. No accounts, no emails, no passwords to forget.
 - **One question at a time.** Answers save as you type. A string of Christmas lights fills in as you go.
 - **Browse by person or by question.** See one person's whole card, or everyone's favorite store side by side.
-- **Secret gift notes.** Leave a note on someone's card ("I'm getting the skillet") so nobody doubles up. The person it's about doesn't see it.
+- **A registry for gift requests.** Each line of someone's gift requests gets its own "Purchased" checkbox, and "Add gift" logs anything else you bought so nobody doubles up. It sits behind a "Show gifts already purchased" button at the bottom of the card, and the person it's for never sees it on their own card.
 - **Your own questions.** Edit one JSON file to change the questions, hints and title.
 - **Tiny.** One Node.js process, no npm dependencies, no database. Answers live in a single JSON file with daily backups.
 
@@ -99,7 +99,7 @@ Copy [`questions.default.json`](questions.default.json), edit it, and mount it:
   "kicker": "The family’s",
   "questions": [
     { "id": "smell", "text": "Something you like to smell", "hint": "Candles, coffee, fresh-cut pine…" },
-    { "id": "gift", "text": "Specific gift request", "hint": "The exact thing, with a link or size if it helps." },
+    { "id": "gift", "text": "Specific gift requests", "hint": "One per line.", "list": true },
     { "id": "secret", "text": "Your most embarrassing moment this year", "stamp": "Confidential" }
   ]
 }
@@ -107,7 +107,7 @@ Copy [`questions.default.json`](questions.default.json), edit it, and mount it:
 
 - `title` shows at the top of every page and in the browser tab. `{year}` becomes the current year.
 - `kicker` is the small handwritten line above the title. Use `""` to hide it.
-- Each question needs a unique `id` (letters, numbers, `-` or `_`) and its `text`. `hint` is the placeholder in the answer box. `stamp` adds a rubber stamp to that question's card.
+- Each question needs a unique `id` (letters, numbers, `-` or `_`) and its `text`. `hint` is the placeholder in the answer box. `stamp` adds a rubber stamp to that question's card. `"list": true` turns the answer into a registry checklist, one item per line (if no question sets it, the question with id `gift` does).
 - Answers are stored by `id`, so you can reword a question without losing answers. Change the `id` and that question starts fresh.
 
 Restart the container after editing the file: `docker restart family-wishlist`.
@@ -130,7 +130,7 @@ Nginx Proxy Manager, Traefik, and Cloudflare Tunnel work the same way: point the
 
 Everything lives in the mounted data folder:
 
-- `family.json` holds every card, answer and gift note.
+- `family.json` holds every card, answer and purchased gift. Gift notes from older versions show up as added gifts.
 - `backups/family-YYYY-MM-DD.json` is a copy made the first time the data changes each day. The last 30 are kept.
 - `.secret` is the cookie signing key.
 
@@ -141,7 +141,7 @@ To back up, copy the folder. To start over next year, stop the container and mov
 This is built for a family, not a bank.
 
 - The family code keeps casual visitors out. Anyone with the code can see and edit every card, including removing one.
-- "Who you are" is just the name you tap on that device. Gift notes are hidden from the person they're about by that choice, so it's an honor system.
+- "Who you are" is just the name you tap on that device. The purchased list is hidden from the person it's for by that choice, so it's an honor system. It also stays collapsed until someone taps the button, so a signed-out visit to your own card doesn't spoil anything by accident.
 - After 8 wrong codes, that IP has to wait 10 minutes.
 - Pages are marked `noindex` so search engines skip them.
 - Fonts load from Google Fonts. Everything else is served by the app itself, with no analytics or tracking.

@@ -212,10 +212,34 @@ h3 { font-size: 22px; font-weight: 600; }
 .a.empty { font: 400 15px var(--ui); color: rgba(42,33,24,.45); }
 .a.empty a { color: var(--cranberry); }
 .answers li.confess { margin: 8px -14px 0; padding: 14px; border-radius: 10px; background: var(--paper-2); border: 0; }
-.notes, .notes-locked { max-width: 760px; margin: 0 auto 16px; padding: 22px clamp(18px, 4vw, 40px); }
-.notes { background: #f3e1e0; }
-.notes h3, .notes-locked h3 { margin-bottom: 4px; }
+.answers .a-list { margin: 2px 0 0; padding-left: 1.1em; display: grid; gap: 2px; }
+.answers .a-list li { display: list-item; padding: 0; border: 0; }
+.notes-locked, .bought, .bought-gate { max-width: 760px; margin: 32px auto 16px; padding: 22px clamp(18px, 4vw, 40px); }
+.notes-locked h3, .bought h3, .bought-gate h3 { margin-bottom: 4px; }
 .notes-locked p { margin: 6px 0 0; color: var(--ink-soft); }
+.bought-gate { background: var(--kraft); }
+.bought-gate p { margin: 6px 0 0; }
+.bought-gate .spoiler { font: 700 22px/1.15 var(--hand); color: var(--cranberry-dark); margin: 10px 0 16px; }
+.bought { background: #f3e1e0; }
+.bought-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.bought-head p { margin: 4px 0 0; }
+.bought h4 { margin: 22px 0 6px; font: 700 14px var(--ui); color: var(--ink-soft); }
+.empty-line { margin: 0; }
+.registry { list-style: none; margin: 0; padding: 0; }
+.registry li { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 10px 0; border-bottom: 1px solid rgba(42,33,24,.12); }
+.registry li:last-child { border-bottom: 0; }
+.reg-text { display: grid; min-width: 0; }
+.reg-item { font: 600 24px/1.15 var(--hand); color: #1d3f8a; overflow-wrap: anywhere; }
+.reg-text .muted { font-size: 13px; }
+.registry li.got .reg-item { color: var(--ink-soft); }
+.reg-check {
+  flex: none; display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 14px 0 10px;
+  border-radius: 999px; background: var(--snow); box-shadow: inset 0 0 0 1.5px rgba(42,33,24,.25);
+  font-weight: 700; font-size: 14px; cursor: pointer;
+}
+.reg-check input { width: 18px; height: 18px; margin: 0; accent-color: var(--pine); color-scheme: light; cursor: pointer; }
+.registry li.got .reg-check { background: var(--pine); color: var(--snow); box-shadow: none; }
+.reg-check:has(input:focus-visible) { outline: 3px solid var(--gold); outline-offset: 2px; }
 .note-list { list-style: none; padding: 0; margin: 14px 0; display: grid; gap: 8px; }
 .note-list li { position: relative; padding: 10px 70px 10px 14px; background: var(--snow); border-radius: 10px; }
 .note-list li p { margin: 0 0 2px; font: 600 23px/1.15 var(--hand); }

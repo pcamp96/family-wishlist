@@ -17,6 +17,6 @@
     { "id": "boardgame", "text": "Your favorite board game", "hint": "Or card game. We won’t tell." },
     { "id": "memory", "text": "Your favorite memory or place (nostalgic)", "hint": "The place or moment you’d go back to." },
     { "id": "pause", "text": "Something you want to pause, or a slight change this year", "hint": "Something to stop, slow down, or tweak." },
-    { "id": "gift", "text": "Specific gift request", "hint": "The exact thing, with a link or size if it helps." }
+    { "id": "gift", "text": "Specific gift requests", "hint": "One per line. The exact thing, with a link or size if it helps.", "list": true }
   ]
 }

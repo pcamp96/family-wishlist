@@ -21,6 +21,16 @@ const app = document.getElementById('app');
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const answeredCount = p => QUESTIONS.filter(q => p.answers[q.id]).length;
 const findPerson = id => people.find(p => p.id === id);
+// A "list" question's answer becomes registry lines: one per line, bullets and numbering stripped, duplicates dropped.
+function listItems(text) {
+  const seen = new Set();
+  return String(text || '').split('\n')
+    .map(s => s.replace(/^\s*(?:[-*•·]|\d+[.)])\s+/, '').trim())
+    .filter(s => s && !seen.has(s.toLowerCase()) && seen.add(s.toLowerCase()));
+}
+const sameItem = (a, b) => String(a).toLowerCase() === String(b).toLowerCase();
+// The purchased section starts closed on every visit so nobody sees it by accident.
+let revealedFor = null;
 const myself = () => findPerson(me);
 function toast(msg) {
   const t = document.getElementById('toast');
@@ -227,29 +237,20 @@ function renderPerson(id) {
       <ol class="answers">
         ${QUESTIONS.map(q => `<li class="${q.stamp ? 'confess' : ''}">
           <span class="q">${esc(q.text)}:</span>
-          ${p.answers[q.id] ? `<span class="a">${esc(p.answers[q.id])}</span>` : `<span class="a empty">${mine ? `<a href="#/fill/${p.id}?q=${q.id}">Add an answer</a>` : 'Not answered yet'}</span>`}
+          ${p.answers[q.id] ? (q.list && listItems(p.answers[q.id]).length > 1
+            ? `<ul class="a a-list">${listItems(p.answers[q.id]).map(it => `<li>${esc(it)}</li>`).join('')}</ul>`
+            : `<span class="a">${esc(p.answers[q.id])}</span>`) : `<span class="a empty">${mine ? `<a href="#/fill/${p.id}?q=${q.id}">Add an answer</a>` : 'Not answered yet'}</span>`}
         </li>`).join('')}
       </ol>
     </article>
 
     ${mine ? `
       <aside class="card notes-locked">
-        <h3>Gift notes</h3>
-        <p>Other people can leave notes on your card about what they’re getting you. You can’t see them. That’s the point.</p>
+        <h3>Already purchased</h3>
+        <p>Everyone else can check off what they’ve bought you. You can’t see it. That’s the point.</p>
       </aside>
       <p class="danger-zone"><button class="link-btn" data-act="delete">Remove my card</button></p>`
-    : `
-      <aside class="card notes">
-        <h3>Gift notes</h3>
-        <p class="muted">Hidden from ${esc(p.name)}. Use it to call dibs so nobody doubles up.</p>
-        <ul class="note-list">
-          ${(p.notes || []).map(nt => `<li><p>${esc(nt.text)}</p><span class="muted">${nt.by ? esc(nt.by) + ' · ' : ''}${relTime(nt.at)}</span><button class="link-btn" data-note="${nt.id}" aria-label="Delete note">Remove</button></li>`).join('') || '<li class="empty">No notes yet.</li>'}
-        </ul>
-        <form class="note-form">
-          <input name="text" maxlength="300" placeholder="I’m getting the cinnamon candle" required>
-          <button class="btn sm">Add note</button>
-        </form>
-      </aside>`}
+    : purchasedSection(p)}
   `, mine ? 'me' : '');
 
   app.querySelector('[data-act="claim"]')?.addEventListener('click', () => { me = p.id; store.set('wl-me', me); refresh(); });
@@ -259,18 +260,77 @@ function renderPerson(id) {
     people = people.filter(x => x.id !== p.id); me = null; store.set('wl-me', null);
     location.hash = '#/';
   });
-  app.querySelector('.note-form')?.addEventListener('submit', async e => {
-    e.preventDefault();
-    const text = e.target.text.value;
-    try {
-      const { person } = await api('POST', `people/${p.id}/notes`, { text, by: myself()?.name || '' });
-      upsert(person); renderPerson(p.id); toast('Noted. Your secret is safe.');
-    } catch (err) { toast(err.message); }
+  app.querySelector('[data-act="reveal"]')?.addEventListener('click', () => {
+    revealedFor = p.id; renderPerson(p.id);
+    document.getElementById('bought')?.scrollIntoView({ block: 'start', behavior: reduce ? 'auto' : 'smooth' });
   });
-  app.querySelectorAll('[data-note]').forEach(b => b.addEventListener('click', async () => {
-    const { person } = await api('DELETE', `people/${p.id}/notes/${b.dataset.note}`);
-    upsert(person); renderPerson(p.id);
+  app.querySelector('[data-act="conceal"]')?.addEventListener('click', () => { revealedFor = null; renderPerson(p.id); });
+
+  // Every change re-renders from the server's copy, so two shoppers never both see an item as still open.
+  async function change(method, url, body, msg) {
+    try {
+      const { person } = await api(method, url, body);
+      upsert(person); renderPerson(p.id); if (msg) toast(msg);
+    } catch (err) {
+      toast(err.message);
+      await refresh().catch(() => {});
+    }
+  }
+  app.querySelectorAll('[data-item]').forEach(cb => cb.addEventListener('change', () => {
+    cb.disabled = true;
+    const item = cb.dataset.item;
+    const g = (p.gifts || []).find(x => x.item && sameItem(x.item, item));
+    if (cb.checked) change('POST', `people/${p.id}/gifts`, { item, by: myself()?.name || '' }, 'Marked purchased. Your secret is safe.');
+    else if (g) change('DELETE', `people/${p.id}/gifts/${g.id}`);
   }));
+  app.querySelector('.gift-form')?.addEventListener('submit', e => {
+    e.preventDefault();
+    change('POST', `people/${p.id}/gifts`, { text: e.target.text.value, by: myself()?.name || '' }, 'Added. Nobody will double up.');
+  });
+  app.querySelectorAll('[data-gift]').forEach(b => b.addEventListener('click', () => change('DELETE', `people/${p.id}/gifts/${b.dataset.gift}`)));
+}
+
+function purchasedSection(p) {
+  if (revealedFor !== p.id) return `
+    <aside class="card bought-gate">
+      <h3>Already purchased</h3>
+      <p class="muted">Check off what you’ve bought for ${esc(p.name)}, or add something they didn’t ask for.</p>
+      <p class="spoiler">Spoilers for ${esc(p.name)}. If this is your card, stop here.</p>
+      <button class="btn" data-act="reveal">Show gifts already purchased</button>
+    </aside>`;
+  const gifts = p.gifts || [];
+  const q = QUESTIONS.find(x => x.list);
+  const items = q ? listItems(p.answers[q.id]) : [];
+  const forItem = it => gifts.find(g => g.item && sameItem(g.item, it));
+  // Gifts not tied to a current line: extras, plus checks on lines the person has since removed.
+  const extras = gifts.filter(g => !g.item || !items.some(it => sameItem(it, g.item)));
+  const who = g => `${g.by ? esc(g.by) + ' · ' : ''}${relTime(g.at)}`;
+  return `
+    <aside class="card bought" id="bought">
+      <div class="bought-head">
+        <div>
+          <h3>Already purchased</h3>
+          <p class="muted">Hidden from ${esc(p.name)}. Check off what you bought so nobody doubles up.</p>
+        </div>
+        <button class="link-btn" data-act="conceal">Hide</button>
+      </div>
+      ${q ? `<h4>${esc(p.name)}’s requests</h4>
+      ${items.length ? `<ul class="registry">
+        ${items.map(it => { const g = forItem(it); return `<li class="${g ? 'got' : ''}">
+          <div class="reg-text"><span class="reg-item">${esc(it)}</span>${g ? `<span class="muted">${who(g)}</span>` : ''}</div>
+          <label class="reg-check"><input type="checkbox" data-item="${esc(it)}" ${g ? 'checked' : ''}><span>Purchased</span></label>
+        </li>`; }).join('')}
+      </ul>` : `<p class="muted empty-line">${esc(p.name)} hasn’t asked for anything specific yet.</p>`}` : ''}
+      <h4>Other gifts</h4>
+      <ul class="note-list">
+        ${extras.map(g => `<li><p>${esc(g.text)}</p><span class="muted">${who(g)}</span><button class="link-btn" data-gift="${g.id}" aria-label="Remove ${esc(g.text)}">Remove</button></li>`).join('') || '<li class="empty">Nothing else yet.</li>'}
+      </ul>
+      <form class="note-form gift-form">
+        <label for="gift-text" class="sr-only">What did you get?</label>
+        <input id="gift-text" name="text" maxlength="300" placeholder="What did you get? A cinnamon candle…" required>
+        <button class="btn sm">Add gift</button>
+      </form>
+    </aside>`;
 }
 
 // ---------- fill (one question at a time) ----------
@@ -335,8 +395,8 @@ function renderFill(id, startQ) {
       <p class="q-num">${i + 1} <span>of ${QUESTIONS.length}</span></p>
       ${q.stamp ? `<span class="stamp" aria-hidden="true">${esc(q.stamp)}</span>` : ''}
       <label for="answer" class="q-text">${esc(q.text)}</label>
-      <textarea id="answer" rows="3"placeholder="${esc(q.hint)}">${esc(p.answers[q.id] || '')}</textarea>
-      <p class="q-tip muted">Enter for next · Shift+Enter for a new line</p>`;
+      <textarea id="answer" rows="${q.list ? 5 : 3}" placeholder="${esc(q.hint)}">${esc(p.answers[q.id] || '')}</textarea>
+      <p class="q-tip muted">${q.list ? 'One gift per line · Enter for a new line' : 'Enter for next · Shift+Enter for a new line'}</p>`;
     const ta = card.querySelector('textarea');
     ta.addEventListener('input', () => {
       p.answers[q.id] = ta.value.trim();
@@ -344,7 +404,8 @@ function renderFill(id, startQ) {
       saveState.textContent = '';
       clearTimeout(timer); timer = setTimeout(flush, 700);
     });
-    ta.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); go(1); } });
+    // On a list question Enter starts the next line, since each line is its own gift.
+    ta.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !q.list) { e.preventDefault(); go(1); } });
     if (!matchMedia('(pointer: coarse)').matches) ta.focus();
     app.querySelector('[data-act="prev"]').disabled = i === 0;
     app.querySelector('[data-act="next"]').textContent = i === QUESTIONS.length - 1 ? 'Finish' : 'Next';
@@ -432,6 +493,7 @@ async function start() {
 window.addEventListener('hashchange', async () => {
   if (document.body.dataset.view === 'lock') return;
   if (window.__flush) { const f = window.__flush; window.__flush = null; await f(); }
+  revealedFor = null;
   try { await loadPeople(); } catch { return; }
   route();
 });

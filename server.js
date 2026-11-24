@@ -41,7 +41,10 @@ function loadConfig() {
   return {
     title: fill(cfg.title || 'Christmas Questionnaire {year}'),
     kicker: fill(cfg.kicker ?? 'The family’s'),
-    questions: questions.map(q => ({ id: q.id, text: q.text.trim(), hint: q.hint ? String(q.hint) : '', stamp: q.stamp ? String(q.stamp) : '' })),
+    // "list": true turns a question's answer into a registry checklist, one item per line.
+    // Older questions files without the flag get it on the "gift" question.
+    questions: questions.map(q => ({ id: q.id, text: q.text.trim(), hint: q.hint ? String(q.hint) : '', stamp: q.stamp ? String(q.stamp) : '',
+      list: q.list === true || (!questions.some(x => x.list === true) && q.id === 'gift') })),
   };
 }
 const CONFIG = loadConfig();
@@ -63,6 +66,11 @@ const TOKEN = crypto.createHmac('sha256', SECRET).update('unlocked:' + PIN).dige
 let db = { people: [] };
 try { db = JSON.parse(fs.readFileSync(DB_FILE, 'utf8')); } catch (e) {
   if (e.code !== 'ENOENT') { console.error('Could not read', DB_FILE, e); process.exit(1); }
+}
+// Gift notes became the purchased list: carry old notes over as added gifts.
+for (const p of db.people) {
+  if (!Array.isArray(p.gifts)) p.gifts = Array.isArray(p.notes) ? p.notes.map(n => ({ id: n.id, text: n.text, by: n.by || '', at: n.at })) : [];
+  delete p.notes;
 }
 let lastBackupDay = '';
 function save() {
@@ -86,8 +94,8 @@ function publicPerson(p, viewer) {
   return {
     id: p.id, name: p.name, ornament: p.ornament, answers: p.answers,
     createdAt: p.createdAt, updatedAt: p.updatedAt,
-    // Secret gift notes are kept from the person they're about (honor system: "viewer" is self-reported).
-    notes: viewer && viewer === p.id ? null : p.notes,
+    // What's been bought is kept from the person it's for (honor system: "viewer" is self-reported).
+    gifts: viewer && viewer === p.id ? null : p.gifts,
   };
 }
 
@@ -210,7 +218,7 @@ async function api(req, res, url) {
     if (db.people.length >= 100) return send(res, 400, { error: 'That’s a big family. Too many people.' });
     if (db.people.some(p => p.name.toLowerCase() === name.toLowerCase()))
       return send(res, 409, { error: `${name} is already on the list. Tap their name instead.` });
-    const p = { id: id(), name, ornament: Number(body.ornament) % 6 || 0, answers: {}, notes: [], createdAt: now(), updatedAt: now() };
+    const p = { id: id(), name, ornament: Number(body.ornament) % 6 || 0, answers: {}, gifts: [], createdAt: now(), updatedAt: now() };
     db.people.push(p); save();
     return send(res, 201, { person: publicPerson(p, p.id) });
   }
@@ -247,17 +255,22 @@ async function api(req, res, url) {
     return send(res, 200, { ok: true });
   }
 
-  if (parts[2] === 'notes' && parts.length === 3 && m === 'POST') {
+  // Purchased list. A gift with "item" checks off a line of a requested list; one without is an extra gift.
+  if (parts[2] === 'gifts' && parts.length === 3 && m === 'POST') {
     const body = await readBody(req);
     if (viewer === person.id) return send(res, 403, { error: 'No peeking at your own surprises.' });
-    const text = clean(body.text, 300);
+    const item = clean(body.item, 500);
+    const text = item || clean(body.text, 300);
     const by = clean(body.by, 40);
-    if (!text) return send(res, 400, { error: 'Write something first.' });
-    person.notes.push({ id: id(), text, by, at: now() }); save();
+    if (!text) return send(res, 400, { error: 'Write what you got first.' });
+    if (item && person.gifts.some(g => g.item && g.item.toLowerCase() === item.toLowerCase()))
+      return send(res, 409, { error: 'Someone already marked that one purchased.', person: publicPerson(person, viewer) });
+    person.gifts.push({ id: id(), ...(item ? { item } : {}), text, by, at: now() }); save();
     return send(res, 201, { person: publicPerson(person, viewer) });
   }
-  if (parts[2] === 'notes' && parts.length === 4 && m === 'DELETE') {
-    person.notes = person.notes.filter(n => n.id !== parts[3]); save();
+  if (parts[2] === 'gifts' && parts.length === 4 && m === 'DELETE') {
+    if (viewer === person.id) return send(res, 403, { error: 'No peeking at your own surprises.' });
+    person.gifts = person.gifts.filter(g => g.id !== parts[3]); save();
     return send(res, 200, { person: publicPerson(person, viewer) });
   }
 
