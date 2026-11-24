@@ -331,6 +331,19 @@ h3 { font-size: 22px; font-weight: 600; }
 .note-form input[name="link"] { flex: 0 1 36%; }
 .link-form { margin: 6px 0 4px; font: 400 15px var(--ui); }
 
+/* ---------- most wanted ---------- */
+.star { color: var(--gold); text-shadow: 0 1px 0 rgba(143,35,29,.35); font-family: var(--ui); font-weight: 400; }
+.star-tip { margin: 2px 0 4px; font-size: 13px; color: var(--ink-soft); }
+.answers .own-list { list-style: none; padding-left: 0; }
+.answers .own-list li { display: flex; align-items: baseline; gap: 6px; }
+.star-btn {
+  flex: none; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 50%; cursor: pointer;
+  background: none; color: rgba(42,33,24,.25); font: 400 22px/32px var(--ui);
+  transition: color .15s ease, transform .15s ease;
+}
+.star-btn:hover { color: rgba(212,166,58,.7); }
+.star-btn.on { color: var(--gold); text-shadow: 0 1px 0 rgba(143,35,29,.35); }
+.star-btn:active { transform: scale(.9); }
 /* ---------- toast ---------- */
 .toast {
   position: fixed; left: 50%; bottom: 24px; z-index: 60;

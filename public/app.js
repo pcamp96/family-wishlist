@@ -30,13 +30,22 @@ function listLines(text) {
     .map(s => s.replace(/^\s*(?:[-*•·]|\d+[.)])\s+/, '').trim())
     .filter(s => s && !seen.has(s.toLowerCase()) && seen.add(s.toLowerCase()));
 }
-const listItems = text => listLines(text).filter(s => !NOTE.test(s));
+// A request starting with ★ is one the person wants most. Starred requests list first.
+const STAR = /^★\s*/;
+const starred = s => STAR.test(s);
+const listItems = text => {
+  const items = listLines(text).filter(s => !NOTE.test(s));
+  return [...items.filter(starred), ...items.filter(s => !starred(s))];
+};
+const stripBullet = l => l.replace(/^\s*(?:[-*•·]|\d+[.)])\s+/, '').trim();
+// A request's text with its star drawn as a gold mark instead of the raw ★.
+const richItem = s => starred(s) ? `<span class="star" role="img" aria-label="Most wanted" title="Most wanted">★</span> ${rich(s.replace(STAR, ''))}` : rich(s);
 const listNotes = text => listLines(text).filter(s => NOTE.test(s)).map(s => s.replace(NOTE, '')).filter(Boolean);
 // Links: any http(s) URL in a request shows as a short clickable link. Purchases match on the text
 // without its links, so adding a link to a request later doesn't lose its checkmark.
 const URL_RE = /\bhttps?:\/\/[^\s<>"']+/gi;
 const HAS_URL = /\bhttps?:\/\//i;
-const itemKey = s => String(s ?? '').replace(URL_RE, ' ').replace(/[\s—–:-]+$/, '').replace(/\s+/g, ' ').trim().toLowerCase();
+const itemKey = s => String(s ?? '').replace(STAR, '').replace(URL_RE, ' ').replace(/[\s—–:-]+$/, '').replace(/\s+/g, ' ').trim().toLowerCase();
 const sameItem = (a, b) => itemKey(a) === itemKey(b);
 function linkTag(url) {
   let host = url;
@@ -271,8 +280,11 @@ function renderPerson(id) {
           <span class="q">${esc(q.text)}:</span>
           ${p.answers[q.id] ? (q.list
             ? `${listNotes(p.answers[q.id]).map(n => `<p class="a a-note">${rich(n)}</p>`).join('')}
-               <ul class="a a-list">${listItems(p.answers[q.id]).map(it => `<li>${rich(it)}${mine && !HAS_URL.test(it)
-                 ? ` <button type="button" class="link-btn add-link" data-link-item="${esc(it)}">Add link</button>` : ''}</li>`).join('')}</ul>`
+               ${mine ? '<p class="star-tip">Tap the star on the things you want most.</p>' : ''}
+               <ul class="a a-list ${mine ? 'own-list' : ''}">${listItems(p.answers[q.id]).map(it => mine
+                 ? `<li><button type="button" class="star-btn ${starred(it) ? 'on' : ''}" data-star-item="${esc(it)}" aria-pressed="${starred(it)}" aria-label="Most wanted: ${esc(it.replace(STAR, ''))}">★</button>
+                     <span>${rich(it.replace(STAR, ''))}${!HAS_URL.test(it) ? ` <button type="button" class="link-btn add-link" data-link-item="${esc(it)}">Add link</button>` : ''}</span></li>`
+                 : `<li>${richItem(it)}</li>`).join('')}</ul>`
             : `<span class="a">${rich(p.answers[q.id])}</span>`) : (mine && q.list ? '' : `<span class="a empty">${mine ? `<a href="#/fill/${p.id}?q=${q.id}">Add an answer</a>` : 'Not answered yet'}</span>`)}
           ${mine && q.list ? `<form class="note-form request-form" data-q="${q.id}">
             <label class="sr-only" for="req-text">New gift request</label>
@@ -366,11 +378,22 @@ function renderPerson(id) {
       const link = normalizeLink(form.link.value);
       if (!link) return toast('That link doesn’t look right.');
       const lines = String(p.answers[qid] || '').split('\n');
-      const i = lines.findIndex(l => l.replace(/^\s*(?:[-*•·]|\d+[.)])\s+/, '').trim() === b.dataset.linkItem);
+      const i = lines.findIndex(l => stripBullet(l) === b.dataset.linkItem);
       if (i < 0) return toast('Couldn’t find that request. Try refreshing.');
       lines[i] = `${lines[i].trimEnd()} ${link}`;
       saveList(qid, lines.join('\n'), 'Link added.');
     });
+  }));
+  app.querySelectorAll('[data-star-item]').forEach(b => b.addEventListener('click', () => {
+    b.disabled = true;
+    const qid = QUESTIONS.find(x => x.list).id;
+    const lines = String(p.answers[qid] || '').split('\n');
+    const i = lines.findIndex(l => stripBullet(l) === b.dataset.starItem);
+    if (i < 0) return toast('Couldn’t find that request. Try refreshing.');
+    const line = stripBullet(lines[i]);
+    const on = !starred(line);
+    lines[i] = on ? `★ ${line}` : line.replace(STAR, '');
+    saveList(qid, lines.join('\n'), on ? 'Starred. Everyone will see you want this most.' : 'Star removed.');
   }));
   app.querySelectorAll('[data-idea]').forEach(b => b.addEventListener('click', () => change('DELETE', `people/${p.id}/ideas/${b.dataset.idea}`)));
   app.querySelectorAll('[data-gift]').forEach(b => b.addEventListener('click', () => change('DELETE', `people/${p.id}/gifts/${b.dataset.gift}`)));
@@ -403,9 +426,10 @@ function purchasedSection(p) {
       </div>
       ${q ? `<h4>${esc(p.name)}’s requests</h4>
       ${listNotes(p.answers[q.id]).map(n => `<p class="muted section-note">${rich(n)}</p>`).join('')}
+      ${items.some(starred) ? `<p class="muted section-note"><span class="star" aria-hidden="true">★</span> ${esc(p.name)} wants these most.</p>` : ''}
       ${items.length ? `<ul class="registry">
         ${items.map(it => { const g = forItem(it); return `<li class="${g ? 'got' : ''}">
-          <div class="reg-text"><span class="reg-item">${rich(it)}</span>${g ? `<span class="muted">${who(g)}</span>` : ''}</div>
+          <div class="reg-text"><span class="reg-item">${richItem(it)}</span>${g ? `<span class="muted">${who(g)}</span>` : ''}</div>
           <label class="reg-check"><input type="checkbox" data-item="${esc(it)}" ${g ? 'checked' : ''}><span>Purchased</span></label>
         </li>`; }).join('')}
       </ul>` : `<p class="muted empty-line">${esc(p.name)} hasn’t asked for anything specific yet.</p>`}` : ''}
