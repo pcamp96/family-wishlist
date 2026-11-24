@@ -214,7 +214,7 @@ h3 { font-size: 22px; font-weight: 600; }
 .answers li.confess { margin: 8px -14px 0; padding: 14px; border-radius: 10px; background: var(--paper-2); border: 0; }
 .answers .a-list { margin: 2px 0 0; padding-left: 1.1em; display: grid; gap: 2px; }
 .answers .a-list li { display: list-item; padding: 0; border: 0; }
-.a-note { margin: 2px 0 6px; font-size: 15px; color: var(--ink-soft); white-space: pre-wrap; overflow-wrap: anywhere; }
+.a-note { margin: 2px 0 6px; }
 .notes-locked, .bought, .bought-gate { max-width: 760px; margin: 32px auto 16px; padding: 22px clamp(18px, 4vw, 40px); }
 .notes-locked h3, .bought h3, .bought-gate h3 { margin-bottom: 4px; }
 .notes-locked p { margin: 6px 0 0; color: var(--ink-soft); }

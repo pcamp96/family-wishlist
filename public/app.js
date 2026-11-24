@@ -242,7 +242,7 @@ function renderPerson(id) {
         ${QUESTIONS.map(q => `<li class="${q.stamp ? 'confess' : ''}">
           <span class="q">${esc(q.text)}:</span>
           ${p.answers[q.id] ? (q.list && listLines(p.answers[q.id]).length > 1
-            ? `${listNotes(p.answers[q.id]).map(n => `<p class="a-note">${esc(n)}</p>`).join('')}
+            ? `${listNotes(p.answers[q.id]).map(n => `<p class="a a-note">${esc(n)}</p>`).join('')}
                <ul class="a a-list">${listItems(p.answers[q.id]).map(it => `<li>${esc(it)}</li>`).join('')}</ul>`
             : `<span class="a">${esc(p.answers[q.id])}</span>`) : `<span class="a empty">${mine ? `<a href="#/fill/${p.id}?q=${q.id}">Add an answer</a>` : 'Not answered yet'}</span>`}
         </li>`).join('')}
