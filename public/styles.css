@@ -224,6 +224,7 @@ h3 { font-size: 22px; font-weight: 600; }
 .bought { background: #f3e1e0; }
 .bought-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .bought-head p { margin: 4px 0 0; }
+.bought-head .spoiler-line { font: 700 20px/1.15 var(--hand); color: var(--cranberry-dark); margin-top: 8px; }
 .bought h4 { margin: 22px 0 6px; font: 700 14px var(--ui); color: var(--ink-soft); }
 .empty-line, .section-note { margin: 0; }
 .section-note { font-size: 14px; margin-bottom: 8px; }
