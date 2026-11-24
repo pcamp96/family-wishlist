@@ -22,12 +22,16 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': 
 const answeredCount = p => QUESTIONS.filter(q => p.answers[q.id]).length;
 const findPerson = id => people.find(p => p.id === id);
 // A "list" question's answer becomes registry lines: one per line, bullets and numbering stripped, duplicates dropped.
-function listItems(text) {
+// A line starting "Note:" is context, not a gift, so it shows as plain text with no checkbox.
+const NOTE = /^note:\s*/i;
+function listLines(text) {
   const seen = new Set();
   return String(text || '').split('\n')
     .map(s => s.replace(/^\s*(?:[-*•·]|\d+[.)])\s+/, '').trim())
     .filter(s => s && !seen.has(s.toLowerCase()) && seen.add(s.toLowerCase()));
 }
+const listItems = text => listLines(text).filter(s => !NOTE.test(s));
+const listNotes = text => listLines(text).filter(s => NOTE.test(s)).map(s => s.replace(NOTE, '')).filter(Boolean);
 const sameItem = (a, b) => String(a).toLowerCase() === String(b).toLowerCase();
 // The purchased section starts closed on every visit so nobody sees it by accident.
 let revealedFor = null;
@@ -237,8 +241,9 @@ function renderPerson(id) {
       <ol class="answers">
         ${QUESTIONS.map(q => `<li class="${q.stamp ? 'confess' : ''}">
           <span class="q">${esc(q.text)}:</span>
-          ${p.answers[q.id] ? (q.list && listItems(p.answers[q.id]).length > 1
-            ? `<ul class="a a-list">${listItems(p.answers[q.id]).map(it => `<li>${esc(it)}</li>`).join('')}</ul>`
+          ${p.answers[q.id] ? (q.list && listLines(p.answers[q.id]).length > 1
+            ? `${listNotes(p.answers[q.id]).map(n => `<p class="a-note">${esc(n)}</p>`).join('')}
+               <ul class="a a-list">${listItems(p.answers[q.id]).map(it => `<li>${esc(it)}</li>`).join('')}</ul>`
             : `<span class="a">${esc(p.answers[q.id])}</span>`) : `<span class="a empty">${mine ? `<a href="#/fill/${p.id}?q=${q.id}">Add an answer</a>` : 'Not answered yet'}</span>`}
         </li>`).join('')}
       </ol>
@@ -321,6 +326,7 @@ function purchasedSection(p) {
         <button class="link-btn" data-act="conceal">Hide</button>
       </div>
       ${q ? `<h4>${esc(p.name)}’s requests</h4>
+      ${listNotes(p.answers[q.id]).map(n => `<p class="muted section-note">${esc(n)}</p>`).join('')}
       ${items.length ? `<ul class="registry">
         ${items.map(it => { const g = forItem(it); return `<li class="${g ? 'got' : ''}">
           <div class="reg-text"><span class="reg-item">${esc(it)}</span>${g ? `<span class="muted">${who(g)}</span>` : ''}</div>
