@@ -33,8 +33,8 @@ function listLines(text) {
 const listItems = text => listLines(text).filter(s => !NOTE.test(s));
 const listNotes = text => listLines(text).filter(s => NOTE.test(s)).map(s => s.replace(NOTE, '')).filter(Boolean);
 const sameItem = (a, b) => String(a).toLowerCase() === String(b).toLowerCase();
-// The purchased section is open by default; "Hide" closes it until you leave the card.
-let hiddenFor = null;
+// The purchased section starts closed on every visit so nobody sees it by accident.
+let revealedFor = null;
 const myself = () => findPerson(me);
 function toast(msg) {
   const t = document.getElementById('toast');
@@ -266,10 +266,10 @@ function renderPerson(id) {
     location.hash = '#/';
   });
   app.querySelector('[data-act="reveal"]')?.addEventListener('click', () => {
-    hiddenFor = null; renderPerson(p.id);
+    revealedFor = p.id; renderPerson(p.id);
     document.getElementById('bought')?.scrollIntoView({ block: 'start', behavior: reduce ? 'auto' : 'smooth' });
   });
-  app.querySelector('[data-act="conceal"]')?.addEventListener('click', () => { hiddenFor = p.id; renderPerson(p.id); });
+  app.querySelector('[data-act="conceal"]')?.addEventListener('click', () => { revealedFor = null; renderPerson(p.id); });
 
   // Every change re-renders from the server's copy, so two shoppers never both see an item as still open.
   async function change(method, url, body, msg) {
@@ -301,7 +301,7 @@ function renderPerson(id) {
 }
 
 function purchasedSection(p) {
-  if (hiddenFor === p.id) return `
+  if (revealedFor !== p.id) return `
     <aside class="card bought-gate">
       <h3>Already purchased</h3>
       <p class="muted">Check off what you’ve bought for ${esc(p.name)}, suggest a gift idea, or log something they didn’t ask for.</p>
@@ -322,7 +322,6 @@ function purchasedSection(p) {
         <div>
           <h3>Already purchased</h3>
           <p class="muted">Hidden from ${esc(p.name)}. Check off what you bought so nobody doubles up.</p>
-          <p class="spoiler-line">Spoilers for ${esc(p.name)}. If this is your card, tap Hide.</p>
         </div>
         <button class="link-btn" data-act="conceal">Hide</button>
       </div>
@@ -523,7 +522,7 @@ async function start() {
 window.addEventListener('hashchange', async () => {
   if (document.body.dataset.view === 'lock') return;
   if (window.__flush) { const f = window.__flush; window.__flush = null; await f(); }
-  hiddenFor = null;
+  revealedFor = null;
   try { await loadPeople(); } catch { return; }
   route();
 });
