@@ -287,7 +287,8 @@ h3 { font-size: 22px; font-weight: 600; }
 .q-card textarea::placeholder { color: rgba(42,33,24,.35); font-weight: 500; }
 .q-card textarea:focus { outline: none; }
 .q-tip { margin: 10px 0 0; font-size: 13px; }
-@media (pointer: coarse) { .q-tip { display: none; } }
+.q-tip-list { font-size: 14px; }
+@media (pointer: coarse) { .q-tip:not(.q-tip-list) { display: none; } }
 .q-card.confess { background: var(--kraft); }
 .stamp {
   position: absolute; top: 20px; right: 18px;

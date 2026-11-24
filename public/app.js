@@ -503,7 +503,7 @@ function renderFill(id, startQ) {
       ${q.stamp ? `<span class="stamp" aria-hidden="true">${esc(q.stamp)}</span>` : ''}
       <label for="answer" class="q-text">${esc(q.text)}</label>
       <textarea id="answer" rows="${q.list ? 5 : 3}" placeholder="${esc(q.hint)}">${esc(p.answers[q.id] || '')}</textarea>
-      <p class="q-tip muted">${q.list ? 'One gift per line · paste a link after any gift' : 'Enter for next · Shift+Enter for a new line'}</p>`;
+      <p class="q-tip muted ${q.list ? 'q-tip-list' : ''}">${q.list ? 'One gift per line. To add a link, paste it at the end of that gift’s line.' : 'Enter for next · Shift+Enter for a new line'}</p>`;
     const ta = card.querySelector('textarea');
     ta.addEventListener('input', () => {
       p.answers[q.id] = ta.value.trim();
